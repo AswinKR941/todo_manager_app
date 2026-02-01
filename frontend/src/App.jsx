@@ -6,15 +6,45 @@ export default function App() {
 
   const [tasks, setTasks] = useState([]);
   const [title, setTitle] = useState("");
+  const [loading, setLoading] = useState(false);
+
+
+  /* =====================
+     LOAD TASKS
+  ====================== */
 
   const loadTasks = async () => {
-    const res = await API.get("/");
-    setTasks(res.data);
+    try {
+
+      setLoading(true);
+
+      const res = await API.get("/");
+      setTasks(res.data);
+
+    } catch (err) {
+
+      if (err.response?.status === 429) {
+        alert("Too many requests. Please wait.");
+      } else {
+        alert("Failed to load tasks");
+      }
+
+      console.error(err);
+
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   useEffect(() => {
     loadTasks();
   }, []);
+
+
+  /* =====================
+     ADD TASK
+  ====================== */
 
   const addTask = async () => {
 
@@ -23,37 +53,88 @@ export default function App() {
       return;
     }
 
-    await API.post("/", { title });
-    setTitle("");
-    loadTasks();
-  };
-
-  const changeStatus = async (id, status) => {
-    await API.patch(`/${id}/status`, { status });
-    loadTasks();
-  };
-
-  const deleteTask = async (id) => {
-
-    const confirm = window.confirm("Are you sure you want to delete this task?");
-
-    if (!confirm) return;
-
     try {
-      await API.delete(`/${id}`);
+
+      setLoading(true);
+
+      await API.post("/", { title });
+
+      setTitle("");
       loadTasks();
 
     } catch (err) {
-      alert("Failed to delete task");
+
+      alert("Failed to add task");
       console.error(err);
+
+    } finally {
+      setLoading(false);
     }
   };
 
 
+  /* =====================
+     CHANGE STATUS
+  ====================== */
+
+  const changeStatus = async (id, status) => {
+    try {
+
+      setLoading(true);
+
+      await API.patch(`/${id}/status`, { status });
+
+      loadTasks();
+
+    } catch (err) {
+
+      alert("Failed to update status");
+      console.error(err);
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  /* =====================
+     DELETE TASK
+  ====================== */
+
+  const deleteTask = async (id) => {
+
+    if (!window.confirm("Are you sure you want to delete this task?")) return;
+
+    try {
+
+      setLoading(true);
+
+      await API.delete(`/${id}`);
+
+      loadTasks();
+
+    } catch (err) {
+
+      alert("Failed to delete task");
+      console.error(err);
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  /* =====================
+     UI
+  ====================== */
+
   return (
     <div className="container">
 
-      <h1>Mini Task Manager (Vite + MERN)</h1>
+      <h1>MERN Task Manager</h1>
+
+
+      {/* INPUT BOX */}
 
       <div className="input-box">
 
@@ -61,64 +142,97 @@ export default function App() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Enter task..."
+          disabled={loading}
         />
 
-        <button onClick={addTask}>Add</button>
+        <button onClick={addTask} disabled={loading}>
+          {loading ? "Please wait..." : "Add"}
+        </button>
 
       </div>
 
-      <div className="task-list">
 
-        {tasks.map((t) => (
+      {/* LOADING */}
 
-          <div key={t._id} className="task-card">
+      {loading ? (
 
-            <h3>{t.title}</h3>
+        <div className="loader-container">
 
-            <p>Status: <b>{t.status}</b></p>
+          <div className="spinner"></div>
 
-            <div className="btn-group">
+          <p>Loading...</p>
 
-              {t.status === "todo" && (
-                <>
-                  <button
-                    className="start"
-                    onClick={() => changeStatus(t._id, "in_progress")}
-                  >
-                    Start
-                  </button>
+        </div>
 
+      ) : (
+
+        /* TASK LIST */
+
+        <div className="task-list">
+
+          {tasks.length === 0 && (
+            <p style={{ textAlign: "center" }}>No tasks found</p>
+          )}
+
+          {tasks.map((t) => (
+
+            <div key={t._id} className="task-card">
+
+              <h3>{t.title}</h3>
+
+              <p>
+                Status: <b>{t.status}</b>
+              </p>
+
+
+              {/* BUTTONS */}
+
+              <div className="btn-group">
+
+                {t.status === "todo" && (
+                  <>
+                    <button
+                      className="start"
+                      onClick={() => changeStatus(t._id, "in_progress")}
+                    >
+                      Start
+                    </button>
+
+                    <button
+                      className="done"
+                      onClick={() => changeStatus(t._id, "done")}
+                    >
+                      Done
+                    </button>
+                  </>
+                )}
+
+
+                {t.status === "in_progress" && (
                   <button
                     className="done"
                     onClick={() => changeStatus(t._id, "done")}
                   >
-                    Done
+                    Complete
                   </button>
-                </>
-              )}
+                )}
 
-              {t.status === "in_progress" && (
+
                 <button
-                  className="done"
-                  onClick={() => changeStatus(t._id, "done")}
+                  className="delete"
+                  onClick={() => deleteTask(t._id)}
                 >
-                  Complete
+                  Delete
                 </button>
-              )}
 
-              {/* DELETE BUTTON */}
-              <button
-                className="delete"
-                onClick={() => deleteTask(t._id)}
-              >
-                Delete
-              </button>
+              </div>
 
             </div>
-          </div>
-        ))}
+          ))}
 
-      </div>
+        </div>
+
+      )}
 
     </div>
   );
