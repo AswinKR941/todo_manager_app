@@ -4,9 +4,30 @@ import "./index.css";
 
 export default function App() {
 
+  /* =====================
+     STATES
+  ====================== */
+
   const [tasks, setTasks] = useState([]);
   const [title, setTitle] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  // Loading counter
+  const [loadingCount, setLoadingCount] = useState(0);
+
+
+  /* =====================
+     LOADING HANDLERS
+  ====================== */
+
+  const startLoading = () => {
+    setLoadingCount(c => c + 1);
+  };
+
+  const stopLoading = () => {
+    setLoadingCount(c => Math.max(0, c - 1));
+  };
+
+  const loading = loadingCount > 0;
 
 
   /* =====================
@@ -16,23 +37,18 @@ export default function App() {
   const loadTasks = async () => {
     try {
 
-      setLoading(true);
+      startLoading();
 
       const res = await API.get("/");
       setTasks(res.data);
 
     } catch (err) {
 
-      if (err.response?.status === 429) {
-        alert("Too many requests. Please wait.");
-      } else {
-        alert("Failed to load tasks");
-      }
-
+      alert("Failed to load tasks");
       console.error(err);
 
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   };
 
@@ -55,12 +71,13 @@ export default function App() {
 
     try {
 
-      setLoading(true);
+      startLoading();
 
       await API.post("/", { title });
 
       setTitle("");
-      loadTasks();
+
+      await loadTasks();
 
     } catch (err) {
 
@@ -68,7 +85,7 @@ export default function App() {
       console.error(err);
 
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   };
 
@@ -80,11 +97,11 @@ export default function App() {
   const changeStatus = async (id, status) => {
     try {
 
-      setLoading(true);
+      startLoading();
 
       await API.patch(`/${id}/status`, { status });
 
-      loadTasks();
+      await loadTasks();
 
     } catch (err) {
 
@@ -92,7 +109,7 @@ export default function App() {
       console.error(err);
 
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   };
 
@@ -107,11 +124,11 @@ export default function App() {
 
     try {
 
-      setLoading(true);
+      startLoading();
 
       await API.delete(`/${id}`);
 
-      loadTasks();
+      await loadTasks();
 
     } catch (err) {
 
@@ -119,7 +136,7 @@ export default function App() {
       console.error(err);
 
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   };
 
@@ -134,7 +151,7 @@ export default function App() {
       <h1>MERN Task Manager</h1>
 
 
-      {/* INPUT BOX */}
+      {/* INPUT SECTION */}
 
       <div className="input-box">
 
@@ -152,10 +169,9 @@ export default function App() {
       </div>
 
 
-      {/* LOADING */}
+      {/* LOADER */}
 
-      {loading ? (
-
+      {loading && (
         <div className="loader-container">
 
           <div className="spinner"></div>
@@ -163,10 +179,12 @@ export default function App() {
           <p>Loading...</p>
 
         </div>
+      )}
 
-      ) : (
 
-        /* TASK LIST */
+      {/* TASK LIST */}
+
+      {!loading && (
 
         <div className="task-list">
 
@@ -185,8 +203,6 @@ export default function App() {
               </p>
 
 
-              {/* BUTTONS */}
-
               <div className="btn-group">
 
                 {t.status === "todo" && (
@@ -194,6 +210,7 @@ export default function App() {
                     <button
                       className="start"
                       onClick={() => changeStatus(t._id, "in_progress")}
+                      disabled={loading}
                     >
                       Start
                     </button>
@@ -201,6 +218,7 @@ export default function App() {
                     <button
                       className="done"
                       onClick={() => changeStatus(t._id, "done")}
+                      disabled={loading}
                     >
                       Done
                     </button>
@@ -212,6 +230,7 @@ export default function App() {
                   <button
                     className="done"
                     onClick={() => changeStatus(t._id, "done")}
+                    disabled={loading}
                   >
                     Complete
                   </button>
@@ -221,6 +240,7 @@ export default function App() {
                 <button
                   className="delete"
                   onClick={() => deleteTask(t._id)}
+                  disabled={loading}
                 >
                   Delete
                 </button>
